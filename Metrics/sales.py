@@ -31,9 +31,9 @@ sales_df = spark.createDataFrame(data, sales_schema)
 
 # COMMAND ----------
 
-# Use built-in multiplication
+# Compute revenue
 sales_with_revenue = sales_df.withColumn(
-    "total_revenue", col("quantity") * col("price")
+    "total_revenue", calculate_revenue(col("quantity"), col("price"))
 )
 
 # COMMAND ----------
@@ -46,4 +46,31 @@ sales_with_revenue = sales_df.withColumn(
     .mode("overwrite")
     .option("overwriteSchema", "true")
     .save("/tmp/delta/sales_with_revenue")
+)
+
+# COMMAND ----------
+
+# Filter for high-value sales
+high_value_df = sales_with_revenue.filter(col("total_revenue") > 1000)
+
+# Get high values
+high_value_list = high_value_df.collect()
+
+# Sum high values
+total_high_value = sum(row["total_revenue"] for row in high_value_list)
+
+# Create summary DF
+summary_data = [("High Value Total", total_high_value)]
+summary_df = spark.createDataFrame(summary_data, ["type", "amount"])
+
+# COMMAND ----------
+
+# Write summary
+(
+    summary_df
+    .write
+    .format("delta")
+    .mode("overwrite")
+    .option("overwriteSchema", "true")
+    .save("/tmp/delta/sales_summary")
 )

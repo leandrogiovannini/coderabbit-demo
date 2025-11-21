@@ -3,7 +3,7 @@
 # COMMAND ----------
 
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col
+from pyspark.sql.functions import col, sum, avg, count
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType
 
 # Initialize SparkSession
@@ -43,4 +43,40 @@ sales_df = spark.createDataFrame(data, schema)
     .mode("overwrite")
     .option("overwriteSchema", "true")
     .save("/tmp/delta/sales")
+)
+
+# Filter for Electronics category
+electronics_df = sales_df.filter(col("category") == "Electronics")
+
+# COMMAND ----------
+
+(
+    electronics_df
+    .write
+    .format("delta")
+    .mode("overwrite")
+    .option("overwriteSchema", "true")
+    .save("/tmp/delta/electronics_raw")
+)
+
+# COMMAND ----------
+
+aggregated_df = (
+    electronics_df
+    .groupBy("region")
+    .agg(
+        sum("total_revenue").alias("total_revenue"),
+        avg("price").alias("avg_price"),
+        count("product_id").alias("num_transactions")
+    )
+    .orderBy("region")
+)
+
+(
+    aggregated_df
+    .write
+    .format("delta")
+    .mode("overwrite")
+    .option("overwriteSchema", "true")
+    .save("/tmp/delta/electronics_aggregated")
 )
