@@ -54,3 +54,25 @@ electronics_df = sales_with_revenue.filter(col("category") == "Electronics")
     .option("overwriteSchema", "true")
     .save("/tmp/delta/electronics_raw")
 )
+
+# COMMAND ----------
+
+aggregated_df = (
+    electronics_df
+    .groupBy("region")
+    .agg(
+        sum("total_revenue").alias("total_revenue"),
+        avg("price").alias("avg_price"),
+        count("product_id").alias("num_transactions")
+    )
+    .orderBy("region")
+)
+
+(
+    aggregated_df
+    .write
+    .format("delta")
+    .mode("overwrite")
+    .option("overwriteSchema", "true")
+    .save("/tmp/delta/electronics_aggregated")
+)
